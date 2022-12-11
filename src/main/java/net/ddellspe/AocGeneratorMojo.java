@@ -1,5 +1,6 @@
 package net.ddellspe;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
@@ -23,40 +24,59 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 
 /**
- * Goal which touches a timestamp file.
- *
- * @goal touch
- * @phase process-sources
+ * Goal which generates the files necessary for an Advent of Code Run using a package per day, and
+ * the current day of the month (in US eastern time) as the default structure for new files with
+ * "DayXX" as the default class/test class name.
  */
 @Mojo(name = "generate-day", defaultPhase = LifecyclePhase.NONE)
 public class AocGeneratorMojo extends AbstractMojo {
 
   @Parameter(defaultValue = "${project}", required = true, readonly = true)
-  private MavenProject project;
+  private MavenProject project = null;
 
   @Parameter(defaultValue = "-1", property = "day", readonly = true)
-  private int day;
+  private int day = -1;
+
+  @Parameter(defaultValue = "false", property = "force", readonly = true)
+  private boolean force = false;
+
+  @Parameter(defaultValue = "true", property = "useDayPackage", readonly = true)
+  private boolean useDayPackage = true;
+
+  public AocGeneratorMojo() {}
+
+  @VisibleForTesting
+  protected AocGeneratorMojo(MavenProject project, int day, boolean force, boolean useDayPackage) {
+    this.project = project;
+    this.day = day;
+    this.force = force;
+    this.useDayPackage = useDayPackage;
+  }
 
   @Override
   public void execute() throws MojoExecutionException, MojoFailureException {
-    if (day == -1) {
+    if (day < 0) {
+      // puzzles are released in the Eastern Timezone of the US, so that's what we default to
       day =
           Calendar.getInstance(TimeZone.getTimeZone(ZoneId.of("America/New_York")))
               .get(Calendar.DAY_OF_MONTH);
     }
-    getLog().info("Generating files for Day " + day);
-    getLog().info(project.getBuild().getTestSourceDirectory());
-    String pkg = String.format("day%02d", day);
+    getLog().info(String.format("Generating Advent of Code files for Day %02d", day));
+    String fullPkg = project.getGroupId();
+    if (useDayPackage) {
+      fullPkg += String.format(".day%02d", day);
+    }
+    getLog().info(String.format("Writing files to package: %s", fullPkg));
     String cls = String.format("Day%02d", day);
     String path =
-        Arrays.stream(project.getGroupId().split("\\."))
+        Arrays.stream(fullPkg.split("\\."))
             .map(File::new)
             .reduce(
                 new File(""),
                 (prev, cur) -> new File(String.valueOf(Paths.get(prev.getPath(), cur.getPath()))))
             .getPath();
     List<MethodSpec> methods = new ArrayList<>();
-    methods.add(MethodSpec.constructorBuilder().build());
+    methods.add(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
     methods.add(
         MethodSpec.methodBuilder("part1")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
@@ -81,12 +101,16 @@ public class AocGeneratorMojo extends AbstractMojo {
             .build());
     TypeSpec dayClass =
         TypeSpec.classBuilder(cls).addModifiers(Modifier.PUBLIC).addMethods(methods).build();
-    JavaFile sourceFile =
-        JavaFile.builder(project.getGroupId() + "." + pkg, dayClass)
-            .skipJavaLangImports(true)
-            .build();
+    JavaFile sourceFile = JavaFile.builder(fullPkg, dayClass).skipJavaLangImports(true).build();
     try {
-      sourceFile.writeToFile(new File(project.getBuild().getSourceDirectory()));
+      File srcFile =
+          Paths.get(project.getBuild().getSourceDirectory(), path, cls + ".java").toFile();
+      if (!srcFile.exists() || srcFile.exists() && force) {
+        sourceFile.writeToFile(new File(project.getBuild().getSourceDirectory()));
+      } else {
+        getLog()
+            .info("Source file already exists at: " + srcFile.getPath() + ". Skipping creation");
+      }
     } catch (IOException e) {
       getLog().error("Unable to create new java file: " + cls + ".java");
     }
@@ -134,42 +158,86 @@ public class AocGeneratorMojo extends AbstractMojo {
             .addMethods(methods)
             .build();
     JavaFile testFile =
-        JavaFile.builder(project.getGroupId() + "." + pkg, dayTestClass)
+        JavaFile.builder(fullPkg, dayTestClass)
             .skipJavaLangImports(true)
             .addStaticImport(ClassName.get("org.junit.jupiter.api", "Assertions"), "assertEquals")
             .build();
     try {
+      File tstFile =
+          Paths.get(project.getBuild().getSourceDirectory(), path, cls + "Test.java").toFile();
+      if (!tstFile.exists() || tstFile.exists() && force) {
+        sourceFile.writeToFile(new File(project.getBuild().getSourceDirectory()));
+      } else {
+        getLog()
+            .info(
+                "Test source file already exists at: " + tstFile.getPath() + ". Skipping creation");
+      }
       testFile.writeToFile(new File(project.getBuild().getTestSourceDirectory()));
     } catch (IOException e) {
-      getLog().error("Unable to create new java file: " + cls + ".java");
+      getLog().error("Unable to create new java test file: " + cls + "Test.java");
     }
     File inputFile =
-        Paths.get(project.getBuild().getResources().get(0).getDirectory(), path, pkg, "input.txt")
+        Paths.get(project.getBuild().getResources().get(0).getDirectory(), path, "input.txt")
             .toFile();
-    if (!inputFile.exists()) {
+    if (!inputFile.exists() || (inputFile.exists() && force)) {
       try {
-        if (inputFile.getParentFile().mkdirs() && !inputFile.createNewFile()) {
+        if ((inputFile.getParentFile().isDirectory() || inputFile.getParentFile().mkdirs())
+            && !inputFile.createNewFile()) {
           getLog().warn("Failed to create input file for tests at: " + inputFile.getPath());
         }
       } catch (IOException e) {
         getLog().error("Unable to create new input file for tests at: " + inputFile.getPath());
       }
+    } else {
+      getLog().info("Input file already exists at: " + inputFile.getPath() + ". Skipping creation");
     }
     File exampleFile =
-        Paths.get(
-                project.getBuild().getTestResources().get(0).getDirectory(),
-                path,
-                pkg,
-                "example.txt")
+        Paths.get(project.getBuild().getTestResources().get(0).getDirectory(), path, "example.txt")
             .toFile();
-    if (!exampleFile.exists()) {
+    if (!exampleFile.exists() || (exampleFile.exists() && force)) {
       try {
-        if (exampleFile.getParentFile().mkdirs() && !exampleFile.createNewFile()) {
+        if ((exampleFile.getParentFile().isDirectory() || exampleFile.getParentFile().mkdirs())
+            && !exampleFile.createNewFile()) {
           getLog().warn("Failed to create example file for tests at: " + exampleFile.getPath());
         }
       } catch (IOException e) {
         getLog().error("Unable to create new example file for tests at: " + exampleFile.getPath());
       }
+    } else {
+      getLog()
+          .info("Example file already exists at: " + exampleFile.getPath() + ". Skipping creation");
     }
+  }
+
+  public MavenProject getProject() {
+    return project;
+  }
+
+  public int getDay() {
+    return day;
+  }
+
+  public boolean isForce() {
+    return force;
+  }
+
+  public boolean isUseDayPackage() {
+    return useDayPackage;
+  }
+
+  public void setProject(MavenProject project) {
+    this.project = project;
+  }
+
+  public void setDay(int day) {
+    this.day = day;
+  }
+
+  public void setForce(boolean force) {
+    this.force = force;
+  }
+
+  public void setUseDayPackage(boolean useDayPackage) {
+    this.useDayPackage = useDayPackage;
   }
 }
