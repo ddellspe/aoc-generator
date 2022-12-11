@@ -16,3 +16,6 @@ log/
 target/
 *release*
 dependency-reduced-pom.xml
+
+# ignored so it can be generated for tests and validated that a new file is created
+src/test/resources/project/ignored

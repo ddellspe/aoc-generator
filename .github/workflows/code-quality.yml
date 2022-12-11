@@ -1,0 +1,19 @@
+name: "Verify Quality"
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  check-code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: "11"
+      - name: Check sortpom
+        run: mvn -B sortpom:verify
+      - name: Check Java Code Formatting
+        run: mvn -B fmt:check
