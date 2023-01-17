@@ -6,10 +6,31 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>maven-plugin</packaging>
     <name>aoc-generator Maven Mojo</name>
-    <url>https://ddellspe.net</url>
+    <description>A Maven Plugin to automatically generate source and test files for advent of code
+        using java.</description>
+    <url>https://github.com/ddellspe/aoc-generator</url>
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>David Dellsperger</name>
+            <email>david.dellsperger@gmail.com</email>
+            <organization>ddellspe</organization>
+            <organizationUrl>https://ddellspe.net</organizationUrl>
+        </developer>
+    </developers>
     <prerequisites>
         <maven>3.6.3</maven>
     </prerequisites>
+    <scm>
+        <connection>scm:git:git://github.com/ddellspe/aoc-generator.git</connection>
+        <developerConnection>scm:git:ssh://github.com:ddellspe/aoc-generator.git</developerConnection>
+        <url>http://github.com/ddellspe/aoc-generator/tree/main</url>
+    </scm>
     <distributionManagement>
         <repository>
             <id>ossrh</id>
@@ -85,6 +106,18 @@
                 <version>2.11.0</version>
                 <scope>test</scope>
             </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>2.0.6</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-simple</artifactId>
+                <version>2.0.6</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <dependencies>
@@ -141,34 +174,17 @@
             <artifactId>mockito-inline</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
-    <repositories>
-        <repository>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <id>central</id>
-            <url>https://artifactory.ddellspe.net/artifactory/maven/</url>
-        </repository>
-        <repository>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-            <id>ddellspe-snapshot</id>
-            <url>https://artifactory.ddellspe.net/artifactory/maven-snapshot/</url>
-        </repository>
-        <repository>
-            <id>maven_central</id>
-            <name>Maven Central</name>
-            <url>https://repo.maven.apache.org/maven2/</url>
-        </repository>
-    </repositories>
     <build>
         <pluginManagement>
             <plugins>

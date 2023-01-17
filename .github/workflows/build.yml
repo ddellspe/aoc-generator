@@ -8,11 +8,13 @@ jobs:
   check-code-quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up JDK 11
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v3
         with:
           java-version: "11"
+          distribution: "temurin"
+          cache: "maven"
       - name: Check sortpom
         run: mvn -B sortpom:verify
       - name: Check Java Code Formatting
@@ -21,11 +23,13 @@ jobs:
     needs: check-code-quality
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up JDK 11
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v3
         with:
           java-version: "11"
+          distribution: "temurin"
+          cache: "maven"
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
       - name: Test Code
@@ -37,11 +41,12 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up JDK 11
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v3
         with:
           java-version: "11"
+          distribution: "temurin"
           cache: "maven"
           server-id: ossrh
           server-username: OSSRH_USERNAME
