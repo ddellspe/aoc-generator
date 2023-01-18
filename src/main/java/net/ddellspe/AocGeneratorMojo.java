@@ -105,7 +105,7 @@ public class AocGeneratorMojo extends AbstractMojo {
     try {
       File srcFile =
           Paths.get(project.getBuild().getSourceDirectory(), path, cls + ".java").toFile();
-      if (!srcFile.exists() || srcFile.exists() && force) {
+      if (!srcFile.exists() || (srcFile.exists() && force)) {
         sourceFile.writeToFile(new File(project.getBuild().getSourceDirectory()));
       } else {
         getLog()
@@ -165,7 +165,7 @@ public class AocGeneratorMojo extends AbstractMojo {
     try {
       File tstFile =
           Paths.get(project.getBuild().getSourceDirectory(), path, cls + "Test.java").toFile();
-      if (!tstFile.exists() || tstFile.exists() && force) {
+      if (!tstFile.exists() || (tstFile.exists() && force)) {
         sourceFile.writeToFile(new File(project.getBuild().getSourceDirectory()));
       } else {
         getLog()
